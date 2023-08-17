@@ -198,10 +198,12 @@ function! s:ActuallyStart() abort
   call mkdir(manager_dir, 'p')
 
   let args = [
+		\ 'nix-alien',
         \ s:bin,
         \ '--api_server_url', get(config, 'api_url', 'https://server.codeium.com'),
         \ '--manager_dir', manager_dir
         \ ]
+
   if has_key(config, 'api_url') && !empty(config.api_url)
     let args += ['--enterprise_mode']
   endif
