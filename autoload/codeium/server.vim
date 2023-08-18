@@ -199,7 +199,7 @@ function! s:ActuallyStart() abort
 
   let args = [
 		\ 'nix-alien',
-        \ s:bin,
+        \ s:bin, '--',
         \ '--api_server_url', get(config, 'api_url', 'https://server.codeium.com'),
         \ '--manager_dir', manager_dir
         \ ]
