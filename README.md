@@ -7,6 +7,7 @@
 [![Discord](https://img.shields.io/discord/1027685395649015980?label=community&color=5865F2&logo=discord&logoColor=FFFFFF)](https://discord.gg/3XFf78nAx5)
 [![Twitter Follow](https://img.shields.io/badge/style--blue?style=social&logo=twitter&label=Follow%20%40codeiumdev)](https://twitter.com/intent/follow?screen_name=codeiumdev)
 ![License](https://img.shields.io/github/license/Exafunction/codeium.vim)
+[![built with Codeium](https://codeium.com/badges/main)](https://codeium.com?repo_name=exafunction%2Fcodeium.vim)
 
 [![Visual Studio](https://img.shields.io/visual-studio-marketplace/i/Codeium.codeium?label=Visual%20Studio&logo=visualstudio)](https://marketplace.visualstudio.com/items?itemName=Codeium.codeium)
 [![JetBrains](https://img.shields.io/jetbrains/plugin/d/20540?label=JetBrains)](https://plugins.jetbrains.com/plugin/20540-codeium/)
@@ -49,13 +50,13 @@ A few of the most popular options are highlighted below.
 
 Codeium provides the following functions to control suggestions:
 
-|Action|Function|Default Binding|
-|---|---|---|
-|Clear current suggestion| `codeium#Clear()` |`<C-]>`|
-|Next suggestion| `codeium#CycleCompletions(1)` |`<M-]>`|
-|Previous suggestion| `codeium#CycleCompletions(-1)` |`<M-[>`|
-|Insert suggestion| `codeium#Accept()` |`<Tab>`|
-|Manually trigger suggestion| `codeium#Complete()` |`<M-Bslash>`|
+| Action                      | Function                       | Default Binding |
+| --------------------------- | ------------------------------ | --------------- |
+| Clear current suggestion    | `codeium#Clear()`              | `<C-]>`         |
+| Next suggestion             | `codeium#CycleCompletions(1)`  | `<M-]>`         |
+| Previous suggestion         | `codeium#CycleCompletions(-1)` | `<M-[>`         |
+| Insert suggestion           | `codeium#Accept()`             | `<Tab>`         |
+| Manually trigger suggestion | `codeium#Complete()`           | `<M-Bslash>`    |
 
 Codeium's default keybindings can be disabled by setting
 
@@ -65,7 +66,7 @@ let g:codeium_disable_bindings = 1
 
 or in Neovim:
 
-```vim
+```lua
 vim.g.codeium_disable_bindings = 1
 ```
 
@@ -73,7 +74,6 @@ If you'd like to just disable the `<Tab>` binding, you can alternatively
 use the `g:codeium_no_map_tab` option.
 
 If you'd like to bind the actions above to different keys, this might look something like the following in Vim:
-
 
 ```vim
 imap <script><silent><nowait><expr> <C-g> codeium#Accept()
@@ -90,16 +90,15 @@ use {
   'Exafunction/codeium.vim',
   config = function ()
     -- Change '<C-g>' here to any keycode you like.
-    vim.keymap.set('i', '<C-g>', function () return vim.fn['codeium#Accept']() end, { expr = true })
-    vim.keymap.set('i', '<c-;>', function() return vim.fn['codeium#CycleCompletions'](1) end, { expr = true })
-    vim.keymap.set('i', '<c-,>', function() return vim.fn['codeium#CycleCompletions'](-1) end, { expr = true })
-    vim.keymap.set('i', '<c-x>', function() return vim.fn['codeium#Clear']() end, { expr = true })
+    vim.keymap.set('i', '<C-g>', function () return vim.fn['codeium#Accept']() end, { expr = true, silent = true })
+    vim.keymap.set('i', '<c-;>', function() return vim.fn['codeium#CycleCompletions'](1) end, { expr = true, silent = true })
+    vim.keymap.set('i', '<c-,>', function() return vim.fn['codeium#CycleCompletions'](-1) end, { expr = true, silent = true })
+    vim.keymap.set('i', '<c-x>', function() return vim.fn['codeium#Clear']() end, { expr = true, silent = true })
   end
 }
 ```
 
 (Make sure that you ran `:Codeium Auth` after installation.)
-
 
 ### ⛔ Disabling Codeium
 
@@ -115,24 +114,55 @@ let g:codeium_filetypes = {
 
 Codeium is enabled by default for most filetypes.
 
-You can also _disable_ codeium by default with the `g:codeium_enabled`
-variable:
+You can also _disable_ codeium by default with the `g:codeium_enabled` variable,
+and enable it manually per buffer by running `:CodeiumEnable`:
 
 ```vim
 let g:codeium_enabled = v:false
 ```
 
-Instead, if you would like to just disable the automatic triggering of
-completions:
+or in Neovim:
+
+```lua
+vim.g.codeium_enabled = false
+```
+
+Or you can disable codeium for _all filetypes_ with the `g:codeium_filetypes_disabled_by_default` variable,
+and use the `g:codeium_filetypes` variable to selectively enable codeium for specified filetypes:
+
+```vim
+" let g:codeium_enabled = v:true
+let g:codeium_filetypes_disabled_by_default = v:true
+
+let g:codeium_filetypes = {
+    \ "rust": v:true,
+    \ "typescript": v:true,
+    \ }
+```
+
+If you would like to just disable the automatic triggering of completions:
 
 ```vim
 let g:codeium_manual = v:true
+
+" You might want to use `CycleOrComplete()` instead of `CycleCompletions(1)`.
+" This will make the forward cycling of suggestions also trigger the first
+" suggestion manually.
+imap <C-;> <Cmd>call codeium#CycleOrComplete()<CR>
+```
+
+To disable automatic text rendering of suggestions (the gray text that appears for a suggestion):
+
+```vim
+let g:codeium_render = v:false
 ```
 
 ### Show Codeium status in statusline
 
-Codeium status can be generated by calling `codeium#GetStatusString()` function.
-It produce 3 char long string with status:
+Codeium status can be generated by calling the `codeium#GetStatusString()` function. In
+Neovim, you can use `vim.api.nvim_call_function("codeium#GetStatusString", {})` instead.
+It produces a 3 char long string with Codeium status:
+
 - `'3/8'` - third suggestion out of 8
 - `'0'` - Codeium returned no suggestions
 - `'*'` - waiting for Codeium response
@@ -150,9 +180,17 @@ Shorter variant without Codeium logo:
 
 Please check `:help statusline` for further information about building statusline in VIM.
 
-For vim-airline extension you can use following config:
+vim-airline supports Codeium out-of-the-box since commit [3854429d](https://github.com/vim-airline/vim-airline/commit/3854429d99c8a2fb555a9837b155f33c957a2202).
 
-```let g:airline_section_y = '{…}%3{codeium#GetStatusString()}'```
+### Launching Codeium Chat
+
+Calling the `codeium#Chat()` function will enable search and indexing in the current project and launch Codeium Chat in a new browser window.
+
+The project root is determined by looking in Vim's current working directory for some specific files or directories to be present and goes up to parent directories until one is found.  This list of hints is user-configurable and the default value is:
+
+```let g:codeium_workspace_root_hints = ['.bzr','.git','.hg','.svn','_FOSSIL_','package.json']```
+
+Note that launching chat enables telemetry.
 
 ## 💾 Installation Options
 

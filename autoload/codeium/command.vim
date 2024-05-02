@@ -85,7 +85,7 @@ function! s:commands.Auth(...) abort
   let tries = 0
 
   if has_key(config, 'api_url') && !empty(config.api_url)
-    let register_user_url = config.api_url . '/exa.api_server_pb.ApiServerService/RegisterUser'
+    let register_user_url = config.api_url . '/exa.seat_management_pb.SeatManagementService/RegisterUser'
   else
     let register_user_url = 'https://api.codeium.com/register_user/'
   endif
@@ -161,6 +161,14 @@ endfunction
 function! s:commands.EnableBuffer(...) abort
   let b:codeium_enabled = 1
   call codeium#command#StartLanguageServer()
+endfunction
+
+function! s:commands.Toggle(...) abort
+  if exists('g:codeium_enabled') && g:codeium_enabled == v:false
+      call s:commands.Enable()
+  else
+      call s:commands.Disable()
+  endif
 endfunction
 
 function! codeium#command#ApiKey() abort
