@@ -50,13 +50,15 @@ A few of the most popular options are highlighted below.
 
 Codeium provides the following functions to control suggestions:
 
-| Action                      | Function                       | Default Binding |
-| --------------------------- | ------------------------------ | --------------- |
-| Clear current suggestion    | `codeium#Clear()`              | `<C-]>`         |
-| Next suggestion             | `codeium#CycleCompletions(1)`  | `<M-]>`         |
-| Previous suggestion         | `codeium#CycleCompletions(-1)` | `<M-[>`         |
-| Insert suggestion           | `codeium#Accept()`             | `<Tab>`         |
-| Manually trigger suggestion | `codeium#Complete()`           | `<M-Bslash>`    |
+| Action                       | Function                       | Default Binding |
+| ---------------------------  | ------------------------------ | --------------- |
+| Clear current suggestion     | `codeium#Clear()`              | `<C-]>`         |
+| Next suggestion              | `codeium#CycleCompletions(1)`  | `<M-]>`         |
+| Previous suggestion          | `codeium#CycleCompletions(-1)` | `<M-[>`         |
+| Insert suggestion            | `codeium#Accept()`             | `<Tab>`         |
+| Manually trigger suggestion  | `codeium#Complete()`           | `<M-Bslash>`    |
+| Accept word from suggestion  | `codeium#AcceptNextWord()`     | `<C-k>`         |
+| Accept line from suggestion  | `codeium#AcceptNextLine()`     | `<C-l>`         |
 
 Codeium's default keybindings can be disabled by setting
 
@@ -77,6 +79,8 @@ If you'd like to bind the actions above to different keys, this might look somet
 
 ```vim
 imap <script><silent><nowait><expr> <C-g> codeium#Accept()
+imap <script><silent><nowait><expr> <C-h> codeium#AcceptNextWord()
+imap <script><silent><nowait><expr> <C-j> codeium#AcceptNextLine()
 imap <C-;>   <Cmd>call codeium#CycleCompletions(1)<CR>
 imap <C-,>   <Cmd>call codeium#CycleCompletions(-1)<CR>
 imap <C-x>   <Cmd>call codeium#Clear()<CR>
@@ -185,6 +189,10 @@ vim-airline supports Codeium out-of-the-box since commit [3854429d](https://gith
 ### Launching Codeium Chat
 
 Calling the `codeium#Chat()` function will enable search and indexing in the current project and launch Codeium Chat in a new browser window.
+
+```vim
+:call codeium#Chat()
+```
 
 The project root is determined by looking in Vim's current working directory for some specific files or directories to be present and goes up to parent directories until one is found.  This list of hints is user-configurable and the default value is:
 

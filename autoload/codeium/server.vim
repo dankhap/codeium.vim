@@ -1,5 +1,5 @@
-let s:language_server_version = '1.8.16'
-let s:language_server_sha = 'f772d3d7b45d3f1aea82cee1fb50501c8869f1a2'
+let s:language_server_version = '1.14.11'
+let s:language_server_sha = '071907d082576067b0c7a5f2f7659958865d751e'
 let s:root = expand('<sfile>:h:h:h')
 let s:bin = v:null
 
@@ -107,10 +107,31 @@ function! s:FindPort(dir, timer) abort
     if time - getftime(path) <= 5 && getftype(path) ==# 'file'
       call codeium#log#Info('Found port: ' . name)
       let s:server_port = name
+      call s:RequestServerStatus()
       call timer_stop(a:timer)
       break
     endif
   endfor
+endfunction
+
+function! s:RequestServerStatus() abort
+  call codeium#server#Request('GetStatus', {'metadata': codeium#server#RequestMetadata()}, function('s:HandleGetStatusResponse'))
+endfunction
+
+function! s:HandleGetStatusResponse(out, err, status) abort
+  " Check if the request was successful
+  if a:status == 0
+    " Parse the JSON response
+    let response = json_decode(join(a:out, "\n"))
+    let status = get(response, 'status', {})
+    " Check if there is a message in the response and echo it
+    if has_key(status, 'message') && !empty(status.message)
+      echom status.message
+    endif
+  else
+    " Handle error if the status is not 0 or if there is stderr output
+    call codeium#log#Error(join(a:err, "\n"))
+  endif
 endfunction
 
 function! s:SendHeartbeat(timer) abort
@@ -151,6 +172,15 @@ function! codeium#server#Start(...) abort
     let bin_suffix = 'macos_x64'
   else
     let bin_suffix = 'windows_x64.exe'
+  endif
+
+  let config = get(g:, 'codeium_server_config', {})
+  if has_key(config, 'portal_url') && !empty(config.portal_url)
+    let response = system('curl -s ' . config.portal_url . '/api/version')
+    if v:shell_error != 0
+      let s:language_server_version = '1.14.11'
+      let s:language_server_sha = '071907d082576067b0c7a5f2f7659958865d751e'
+    endif
   endif
 
   let sha = get(codeium#command#LoadConfig(codeium#command#XdgConfigDir()), 'sha', s:language_server_sha)
@@ -236,6 +266,7 @@ function! s:ActuallyStart() abort
 
   if has_key(config, 'api_url') && !empty(config.api_url)
     let args += ['--enterprise_mode']
+    let args += ['--portal_url', get(config, 'portal_url', 'https://codeium.example.com')]
   endif
 
   call codeium#log#Info('Launching server with manager_dir ' . manager_dir)

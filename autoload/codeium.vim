@@ -39,14 +39,14 @@ function! codeium#CompletionText() abort
   endtry
 endfunction
 
-function! codeium#Accept() abort
+function! s:CompletionInserter(current_completion, insert_text) abort
   let default = get(g:, 'codeium_tab_fallback', pumvisible() ? "\<C-N>" : "\t")
 
   if mode() !~# '^[iR]' || !exists('b:_codeium_completions')
     return default
   endif
 
-  let current_completion = s:GetCurrentCompletionItem()
+  let current_completion = a:current_completion
   if current_completion is v:null
     return default
   endif
@@ -58,7 +58,7 @@ function! codeium#Accept() abort
   let start_offset = get(range, 'startOffset', 0)
   let end_offset = get(range, 'endOffset', 0)
 
-  let text = current_completion.completion.text . suffix_text
+  let text = a:insert_text . suffix_text
   if empty(text)
     return default
   endif
@@ -85,6 +85,29 @@ function! codeium#Accept() abort
   endif
   call codeium#server#Request('AcceptCompletion', {'metadata': codeium#server#RequestMetadata(), 'completion_id': current_completion.completion.completionId})
   return delete_range . insert_text . cursor_text
+endfunction
+
+function! codeium#Accept() abort
+  let current_completion = s:GetCurrentCompletionItem()
+  return s:CompletionInserter(current_completion, current_completion is v:null ? '' : current_completion.completion.text)
+endfunction
+
+function! codeium#AcceptNextWord() abort
+  let current_completion = s:GetCurrentCompletionItem()
+  let completion_parts = current_completion is v:null ? [] : get(current_completion, 'completionParts', [])
+  if len(completion_parts) == 0
+    return ''
+  endif
+  let prefix_text = get(completion_parts[0], 'prefix', '')
+  let completion_text = get(completion_parts[0], 'text', '')
+  let next_word = matchstr(completion_text, '\v^\W*\k*')
+  return s:CompletionInserter(current_completion, prefix_text . next_word)
+endfunction
+
+function! codeium#AcceptNextLine() abort
+  let current_completion = s:GetCurrentCompletionItem()
+  let text = current_completion is v:null ? '' : substitute(current_completion.completion.text, '\v\n.*$', '', '')
+  return s:CompletionInserter(current_completion, text)
 endfunction
 
 function! s:HandleCompletionsResult(out, err, status) abort
@@ -216,8 +239,11 @@ function! s:RenderCurrentCompletion() abort
     endif
 
     if has('nvim')
+      " Set priority high so that completions appear above LSP inlay hints
+      let priority = get(b:, 'codeium_virtual_text_priority',
+                  \ get(g:, 'codeium_virtual_text_priority', 65535))
       let _virtcol = virtcol([row, _col+diff])
-      let data = {'id': idx + 1, 'hl_mode': 'combine', 'virt_text_win_col': _virtcol - 1}
+      let data = {'id': idx + 1, 'hl_mode': 'combine', 'virt_text_win_col': _virtcol - 1, 'priority': priority }
       if part.type ==# 'COMPLETION_PART_TYPE_INLINE_MASK'
         let data.virt_text = [[text, s:hlgroup]]
       elseif part.type ==# 'COMPLETION_PART_TYPE_BLOCK'
@@ -400,10 +426,9 @@ function! s:LaunchChat(out, err, status) abort
   let l:ws_port = l:processes['chatWebServerPort']
 
   let config = get(g:, 'codeium_server_config', {})
-  let l:has_enterprise_extension = "false"
+  let l:has_enterprise_extension = 'false'
   if has_key(config, 'api_url') && !empty(config.api_url)
-    let l:has_enterprise_extension = "true"
-    let args += ['--portal_url', get(config, 'portal_url', 'https://codeium.example.com')]
+    let l:has_enterprise_extension = 'true'
   endif
 
   " Hard-coded to English locale and allowed telemetry.
@@ -445,6 +470,15 @@ function! s:GetProjectRoot() abort
   return getcwd()
 endfunction
 
+function! codeium#RefreshContext() abort
+  " current buffer is 1
+  try
+    call codeium#server#Request('RefreshContextForIdeAction', {'active_document': codeium#doc#GetDocument(1, line('.'), line('.'))})
+  catch
+    call codeium#log#Exception()
+  endtry
+endfunction
+
 " This assumes a single workspace is involved per Vim session, for now.
 let s:codeium_workspace_indexed = v:false
 function! codeium#AddTrackedWorkspace() abort
@@ -453,7 +487,7 @@ function! codeium#AddTrackedWorkspace() abort
   endif
   let s:codeium_workspace_indexed = v:true
   try
-    call codeium#server#Request('AddTrackedWorkspace', {"workspace": s:GetProjectRoot()})
+    call codeium#server#Request('AddTrackedWorkspace', {'workspace': s:GetProjectRoot()})
   catch
     call codeium#log#Exception()
   endtry
@@ -464,6 +498,7 @@ function! codeium#Chat() abort
     return
   endif
   try
+    call codeium#RefreshContext()
     call codeium#server#Request('GetProcesses', codeium#server#RequestMetadata(), function('s:LaunchChat', []))
     call codeium#AddTrackedWorkspace()
   catch
